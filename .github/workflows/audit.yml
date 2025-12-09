@@ -1,0 +1,106 @@
+name: Polka Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo_url:
+        description: 'GitHub Repo URL'
+        required: true
+        type: string
+      ref:
+        description: 'Git Ref'
+        required: true
+        type: string
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Runner Repo
+        uses: actions/checkout@v4
+
+      - name: Parse Repository Details
+        env:
+          REPO_URL_INPUT: ${{ inputs.repo_url }}
+        run: |
+          REPO_URL="$REPO_URL_INPUT"
+          # Remove trailing slash if present
+          REPO_URL=${REPO_URL%/}
+          # Remove .git suffix if present
+          REPO_URL=${REPO_URL%.git}
+          
+          TARGET_REPO=$(basename "$REPO_URL")
+          TARGET_OWNER=$(basename $(dirname "$REPO_URL"))
+          
+          echo "TARGET_OWNER=$TARGET_OWNER" >> $GITHUB_ENV
+          echo "TARGET_REPO=$TARGET_REPO" >> $GITHUB_ENV
+          
+          echo "Parsed Owner: $TARGET_OWNER"
+          echo "Parsed Repo: $TARGET_REPO"
+
+      - name: Checkout Target Repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TARGET_OWNER }}/${{ env.TARGET_REPO }}
+          ref: ${{ inputs.ref }}
+          path: target-repo
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install Polka CLI
+        run: npm install -g @polka-codes/cli@latest
+
+      - name: Run Audit
+        env:
+          POLKA_API_KEY: ${{ secrets.POLKA_API_KEY }}
+          POLKA_API_PROVIDER: openrouter
+          POLKA_MODEL: google/gemini-2.5-pro
+          
+        run: |
+          cd target-repo
+          node -e '
+            const fs = require("fs");
+            const { spawnSync } = require("child_process");
+            const prompt = fs.readFileSync("../prompt.md", "utf8");
+            const result = spawnSync("polka", ["epic", prompt, "--no-review", "--yes"], { stdio: "inherit" });
+            if (result.status !== 0) process.exit(result.status);
+          '
+
+      - name: Prepare Results Directory
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          echo "DATE=$DATE" >> $GITHUB_ENV
+          
+          DEST_DIR="assessment/${{ env.TARGET_OWNER }}/${{ env.TARGET_REPO }}/$DATE"
+          mkdir -p "$DEST_DIR"
+          
+          # Check if pal-review directory exists before copying
+          if [ -d "target-repo/pal-review" ]; then
+            cp -r target-repo/pal-review/* "$DEST_DIR/"
+          else
+            echo "No pal-review directory found in target-repo"
+            # Create a placeholder file so the PR isn't empty if audit failed to produce output but we still want to know
+            echo "Audit completed but no review files were generated." > "$DEST_DIR/audit-log.txt"
+          fi
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: review-results
+          path: target-repo/pal-review/
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: "Add audit for ${{ env.TARGET_OWNER }}/${{ env.TARGET_REPO }}"
+          title: "Audit Results: ${{ env.TARGET_OWNER }}/${{ env.TARGET_REPO }}"
+          branch: "audit/${{ env.TARGET_OWNER }}/${{ env.TARGET_REPO }}/${{ env.DATE }}"
+          add-paths: assessment/
