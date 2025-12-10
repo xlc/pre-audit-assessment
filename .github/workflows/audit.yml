@@ -79,7 +79,7 @@ jobs:
             const fs = require("fs");
             const { spawnSync } = require("child_process");
             const prompt = fs.readFileSync("../prompt.md", "utf8");
-            const result = spawnSync("polka", ["epic", prompt, "--no-review", "--yes"], { stdio: "inherit" });
+            const result = spawnSync("polka", ["code", prompt, "--yes"], { stdio: "inherit" });
             if (result.status !== 0) process.exit(result.status);
           '
 
