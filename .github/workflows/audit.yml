@@ -107,5 +107,6 @@ jobs:
         with:
           commit-message: "Add audit for ${{ env.TARGET_OWNER }}/${{ env.TARGET_REPO }}"
           title: "Audit Results: ${{ env.TARGET_OWNER }}/${{ env.TARGET_REPO }}"
+          body: "This PR contains the pre audit assessment results for ${{ env.TARGET_OWNER }}/${{ env.TARGET_REPO }}."
           branch: "audit/${{ env.TARGET_OWNER }}/${{ env.TARGET_REPO }}/${{ env.DATE }}"
           add-paths: assessment/
