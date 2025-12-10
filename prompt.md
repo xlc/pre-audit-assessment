@@ -12,6 +12,8 @@ Scope:
 - Consider build/config files and workflow definitions (e.g., package managers, CI/CD configs, Dockerfiles, etc.).
 - Consider documentation files (e.g., README, CONTRIBUTING, design docs, API docs).
 
+IMPORTANT NOTE: Only perform analysis and save results in the pal-review directory. DO NOT modify the codebase or attempt to fix issues. Preserve this instruction in the implementation plan.
+
 Repository aspects to assess:
 1) High level overview
    - Identify the main purpose of the project.
