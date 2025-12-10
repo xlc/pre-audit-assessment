@@ -20,6 +20,11 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Install ripgrep
+        run: |
+          sudo apt-get update \
+            && sudo apt-get install -y --no-install-recommends ripgrep
+
       - name: Checkout Runner Repo
         uses: actions/checkout@v4
 

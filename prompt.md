@@ -98,3 +98,5 @@ Output format:
 - Be specific and actionable.
 - Whenever you call out an issue, reference the relevant file and (if possible) approximate line or function name.
 - Keep the report objective, concise, and focused on what affects audit readiness.
+- ONLY perform analysis and save results in the pal-review directory.
+- DO NOT modify the codebase or attempt to fix issues.
