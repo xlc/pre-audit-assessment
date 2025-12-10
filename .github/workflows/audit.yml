@@ -15,6 +15,7 @@ on:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     permissions:
       contents: write
       pull-requests: write
@@ -72,6 +73,7 @@ jobs:
           POLKA_MODEL: gemini-3-pro-preview
           GOOGLE_VERTEX_LOCATION: global
           GOOGLE_VERTEX_PROJECT: ${{ secrets.GOOGLE_VERTEX_PROJECT }}
+          POLKA_BUDGET: 15
           
         run: |
           cd target-repo
@@ -96,8 +98,7 @@ jobs:
             cp -r target-repo/pal-review/* "$DEST_DIR/"
           else
             echo "No pal-review directory found in target-repo"
-            # Create a placeholder file so the PR isn't empty if audit failed to produce output but we still want to know
-            echo "Audit completed but no review files were generated." > "$DEST_DIR/audit-log.txt"
+            exit 1
           fi
 
       - name: Upload Artifacts
