@@ -11,6 +11,11 @@ on:
         description: 'Git Ref'
         required: true
         type: string
+      path:
+        description: 'Path to audit (relative to repo root)'
+        required: false
+        type: string
+        default: '.'
 
 jobs:
   audit:
@@ -74,16 +79,39 @@ jobs:
           GOOGLE_VERTEX_LOCATION: global
           GOOGLE_VERTEX_PROJECT: ${{ secrets.GOOGLE_VERTEX_PROJECT }}
           POLKA_BUDGET: 15
+          AUDIT_PATH: ${{ inputs.path }}
+          PROMPT_PATH: ${{ github.workspace }}/prompt.md
           
         run: |
-          cd target-repo
+          TARGET_DIR="target-repo"
+          
+          if [[ "$AUDIT_PATH" == *".."* ]]; then
+            echo "Error: Invalid path. Directory traversal is not allowed."
+            exit 1
+          fi
+          
+          if [ -n "$AUDIT_PATH" ] && [ "$AUDIT_PATH" != "." ] && [ "$AUDIT_PATH" != "./" ]; then
+             TARGET_DIR="target-repo/$AUDIT_PATH"
+          fi
+          
+          echo "Auditing directory: $TARGET_DIR"
+          ROOT_DIR=$(pwd)
+          cd "$TARGET_DIR"
+          
           node -e '
             const fs = require("fs");
             const { spawnSync } = require("child_process");
-            const prompt = fs.readFileSync("../prompt.md", "utf8");
+            const promptPath = process.env.PROMPT_PATH;
+            const prompt = fs.readFileSync(promptPath, "utf8");
             const result = spawnSync("polka", ["code", prompt, "--yes"], { stdio: "inherit" });
             if (result.status !== 0) process.exit(result.status);
           '
+          
+          if [ "$(pwd)" != "$ROOT_DIR/target-repo" ] && [ -d "pal-review" ]; then
+            echo "Moving results to target-repo root..."
+            mkdir -p "$ROOT_DIR/target-repo/pal-review"
+            cp -r pal-review/. "$ROOT_DIR/target-repo/pal-review/"
+          fi
 
       - name: Prepare Results Directory
         run: |
